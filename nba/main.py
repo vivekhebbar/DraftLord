@@ -23,7 +23,7 @@ def sqlInteract():
 def today():
 	gamelog_ss.updateGameLog()
 	train.formTrainingSet()
-	
+
 
 
 
@@ -33,7 +33,7 @@ def today():
 actions = {'pr': roster_ss.populateRoster,
 		  'ugl': gamelog_ss.udateGameLog,
 		  'pgl': gamelog_ss.populateGameLog,
-		  'x': sqlInteract
+		  'x': sqlInteract,
 		  'tr': train.formTrainingSet
 		  }
 
