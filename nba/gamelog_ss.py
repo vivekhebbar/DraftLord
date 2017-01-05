@@ -35,14 +35,11 @@ def populateGameLog():
 		sqlStmt = "SELECT COUNT(*) FROM gamelog WHERE date = " + currDate \
 		.strftime('%Y%m%d')
 		c.execute(sqlStmt)
-		recordsExist = (c.fetchone()[0] != 0)
+		recordsExist = not (c.fetchone()[0] == 0)
 		# Add records for currDate to gamelog only if they do not exist
 		# in gamelog already
 		if not recordsExist:
 			logRecords = updateGameLog(currDate, conn)
-			sqlStmt = "INSERT OR REPLACE INTO gamelog VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-			c.executemany(sqlStmt, logRecords)
-			conn.commit()
 	# Compute the number of records added to gamelogs
 	c.execute("SELECT COUNT(*) FROM gamelog")
 	numRecords = c.fetchone()[0]
@@ -91,16 +88,22 @@ def updateGameLog(date=datetime.now(), conn=None):
 			# Determine player id, slug, position, and team 
 			[id, slug, pos, teamId] = [currPlayer[key] for key \
 			in ('id', 'slug', 'position_abbreviation', 'team_id')]
-			# Utilize helper function to calculate the player's fantasy points
-			# scored in date's game
-			[pts, threes, rbs, ass, stl, blk, trn, dbldbl, tpldbl, fpts] =calculateFantasyPoints(currLog)
-			record = [id, slug, intDate, teamIds[currLog['opponent_id']], 'home' if currLog['is_home_team'] else 'away', pts, threes, rbs, ass, stl, blk, trn, dbldbl, tpldbl, fpts]
+			# Utilize helper function to extract player stats and scored fantasy
+			# points for game date's game. VARIABLES EXPLICITLY ENUMERATED HERE
+			# TO PREVENT FORGETTING WHICH STATS ARE BEING USED.
+			[pts, threes, rbs, ast, stl, blk, trn, dbldbl, tpldbl, fpts] =extractPlayerStats(currLog)
+			record = [id, slug, intDate, teamIds[currLog['opponent_id']], 'home' if currLog['is_home_team'] else 'away', pts, threes, rbs, ast, stl, blk, trn, dbldbl, tpldbl, fpts]
 			print "Finished " + record[1] + " " + pos + "."
 			logRecords += [record]
-	return logRecords
+	sqlStmt = "INSERT OR REPLACE INTO gamelog VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+	c.executemany(sqlStmt, logRecords)
+	conn.commit()
 
-
-def calculateFantasyPoints(log):
+# Helper function that extracts desired stats from log record; will also calculate
+# the fantasy points the player was awarded from the game corresponding to the log
+# record. Currently, stats used are:
+# PTS, 3PT, RB, AST, STL, BLK, TO, 2-2, 3-2, (fantasy points)
+def extractPlayerStats(log):
 	xVector = np.array([
 		int(log['points']), 
 		log['three_pointers_made'], 
@@ -114,6 +117,3 @@ def calculateFantasyPoints(log):
 		])
 	wVector = np.array([1, 0.5, 1.25, 1.5, 2, 2, -0.5, 1.5, 3])
 	return np.append(xVector, np.dot(xVector, wVector))
-
-ugl = updateGameLog
-pgl = populateGameLog
