@@ -31,7 +31,7 @@ def today():
 # Currently implemented options for command line argument
 # usage
 actions = {'pr': roster_ss.populateRoster,
-		  'ugl': gamelog_ss.udateGameLog,
+		  'ugl': gamelog_ss.updateGameLog,
 		  'pgl': gamelog_ss.populateGameLog,
 		  'x': sqlInteract,
 		  'tr': train.formTrainingSet
