@@ -4,6 +4,8 @@ from datetime import datetime, timedelta
 import numpy as np
 import constants
 
+teamIds = None
+
 # This function builds the gamelog table, which contains record entries
 # for all game performances in the past year for all players in the form:
 # (player id, slug, date, opponent, home/away, points, 3pters, rebounds, assists,
@@ -35,11 +37,41 @@ def populateGameLog():
 		sqlStmt = "SELECT COUNT(*) FROM gamelog WHERE date = " + currDate \
 		.strftime('%Y%m%d')
 		c.execute(sqlStmt)
-		recordsExist = not (c.fetchone()[0] == 0)
+		recordsExist =  c.fetchone()[0]
 		# Add records for currDate to gamelog only if they do not exist
 		# in gamelog already
 		if not recordsExist:
-			logRecords = updateGameLog(currDate, conn)
+			updateGameLog(currDate, conn)
+	# Compute the number of records added to gamelogs
+	c.execute("SELECT COUNT(*) FROM gamelog")
+	numRecords = c.fetchone()[0]
+	print "There are " + str(numRecords) + " records in the gamelog table."
+	# Upon looping through all teams, close DBconnection
+	conn.close()
+
+# This function updates records that are missing from today up to the day before
+# the last date with records in the gamelog table.
+def updateMissing():
+	print "Updating missing records in gamelog table..."
+	# Open DB connection and create gamelog table
+	conn = sqlite3.connect('nba.db')
+	c = conn.cursor()
+	# Starting with today, update the game log for each day and 
+	# decrement pointer by one day. End when pointer gets to a day with records
+	# already logged in the table.
+	curr, step = datetime.now(), timedelta(days=1)
+	for i in range(366):
+		# Determine whether there are already records in gamelog on
+		# the currDate (curr - i * step) and set equal to recordsExist
+		currDate = curr - i * step
+		sqlStmt = "SELECT COUNT(*) FROM gamelog WHERE date = " + currDate \
+		.strftime('%Y%m%d')
+		c.execute(sqlStmt)
+		recordsExist =  c.fetchone()[0]
+		# If there are records for the current day, break out of for loop 
+		if recordsExist:
+			break
+		updateGameLog(currDate, conn)
 	# Compute the number of records added to gamelogs
 	c.execute("SELECT COUNT(*) FROM gamelog")
 	numRecords = c.fetchone()[0]
@@ -53,6 +85,7 @@ def populateGameLog():
 # that this function solely exists to incrementally add recent logs 
 # to an existing log table.
 def updateGameLog(date=datetime.now(), conn=None):
+	global teamIds
 	# Generate cursor for database connection if c=None
 	if not conn:
 		conn = sqlite3.connect('nba.db')
@@ -63,12 +96,14 @@ def updateGameLog(date=datetime.now(), conn=None):
 	# Convert date (datetime) into int yyyymmdd for SQLite sorting
 	# purposes
 	intDate = int(date.strftime('%Y%m%d'))
-	# Query stattleship for NFL teams
 	newQuery = Stattleship()
 	token = newQuery.set_token(constants.accessToken)
-	teams = newQuery.ss_get_results(sport='basketball',league='nba',ep='teams')
-	# Construct dictionary of all team ids and each matching team slug
-	teamIds = {item['id'] : item['slug'] for item in teams[0]['teams']}
+	# If teamIds dictionary hasn't been instantiated, instantiate it.
+	if not teamIds:
+		# Query stattleship for NFL teams
+		teams = newQuery.ss_get_results(sport='basketball',league='nba',ep='teams')
+		# Construct dictionary of all team ids and each matching team slug
+		teamIds = {item['id'] : item['slug'] for item in teams[0]['teams']}
 	# logRecords will contain all of the date's game logs to be inserted
 	# into gamelog at end of for loop
 	logRecords = []

@@ -1,16 +1,23 @@
 import sqlite3
 from datetime import datetime, timedelta
 import numpy as np
+from sklearn import utils, linear_model
+import csv
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-trainingData, trainingLabels = [], []
+# global variables
+data, labels, model = [], [], None
 
 # This function builds the a 2-dimensional training array, as well as a
 # 1-dimensional label array. Each inner array in the training array consists of
 # training points the user would like to create a predictive model for.
 # The label array consists of fantasy points scored by/on the player/date
 # combination that corresponds to its respective data point in the training array.
-def formTrainingSet(date=datetime.now()):
-	global trainingData, trainingLabels
+def formDataSet(date=datetime.now()):
+	print "Pulling data from gamelog table to create data, labels for training model..."
+	global data, labels
 	# Open DB connection
 	conn = sqlite3.connect('nba.db')
 	c = conn.cursor()
@@ -37,10 +44,8 @@ def formTrainingSet(date=datetime.now()):
 		# function. Then add the datapoint and the label to the existing lists
 		for record in records:
 			dataPoint, dataLabel = createPointandLabel(record, conn)
-			trainingData += [dataPoint]
-			trainingLabels += [dataLabel]
-
-	print len(trainingData), len(trainingData[0]), len(trainingLabels)
+			data += [dataPoint]
+			labels += [dataLabel]
 
 # Helper function that extracts a datapoint and a label from a record in the 
 # gamelog table. Currently, the datapoint is of the form: 
@@ -63,10 +68,48 @@ def createPointandLabel(record, conn):
 	point += homeAwayAverage(playerSlug, record[4], c)
 	return point, label
 
+# Description here
+def generateModel():
+	global data, labels, model
+	lenData = (len(data) / 10) * 10
+	shfl = utils.shuffle(data, labels)
+	# Create training and test data, labels to fit and evaluate model
+	trainData, trainLabel = shfl[0][:lenData / 10 * 9], shfl[1][:lenData / 10 * 9]
+	testData, testLabel = shfl[0][lenData / 10 * 9:], shfl[1][lenData / 10 * 9:]
+	model = linear_model.LinearRegression()
+	print "Training model on training data..."
+	model.fit(trainData, trainLabel)
+	print "Training completed."
+	# Write coefficients to CSV file if later use is needed
+	with open('coeffs.csv','wb') as csvfile:
+		writer = csv.writer(csvfile)
+		writer.writerow(['Order','Value'])
+		for i in range(len(model.coef_)):
+			writer.writerow([i+1, model.coef_[i]])
+	# Evaluate model's accuracy by comparing predicted test labels vs. true test
+	# labels
+	score = model.score(testData, testLabel)
+	print "Accuracy of model on test data is: " + str(score)
+
 # Used to construct data point that is compatible with trained model by
 # the pertinent features from the gamelog data table
-def createQueryPoint():
-	return None
+# dct currently requires: intdate, opponent_slug, home/away
+def createQueryPoint(dct, c):
+	if not c:
+		conn = sqlite3.connect('nba.db')
+		c = conn.cursor()
+	# Instantiate point to empty array
+	point = []
+	############################### FEATURES BELOW ###############################
+	# ADD: Average over past year
+	point += yearAverage(dct['playerSlug'], dct['date'], c)
+	# ADD: Average over 5 most recent games for current date
+	point += rollAverage(dct['playerSlug'], dct['date'], c)
+ 	# ADD: Average over season vs. opponent
+ 	point += oppAverage(dct['playerSlug'], dct['opponentSlug'], c)
+	# ADD: Average over season when home/away
+	point += homeAwayAverage(dct['playerSlug'], dct['homeAway'], c)
+	return point
 
 # Helper function for calculating average over year features
 def yearAverage(playerSlug, intDate, c):
