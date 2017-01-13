@@ -31,7 +31,7 @@ def populateGameLog():
 	iterable_days = (date.today() - start_of_season).days
 	print("Number of days since start of season is :" + str(iterable_days))
 	curr, step = datetime.now(), timedelta(days=1)
-	for i in range(366):
+	for i in range(iterable_days):
 		currDate = curr - i * step
 		sqlStmt = "SELECT COUNT(*) FROM gamelog WHERE date = " + currDate \
 		.strftime('%Y%m%d')
