@@ -7,6 +7,8 @@ import constants
 from bs4 import BeautifulSoup
 from datetime import datetime
 import requests
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
 
 def forToday():
 	print "Pulling all relevant data for today's games and players."
@@ -45,13 +47,15 @@ def forToday():
 		name = player.find("a", attrs={"class": "dplayer-link"}).text.split(" ")
 		first, last = name[0], name[1]
 		# Look up first, last in roster table; retrieve player slug and position
-		sqlStmt = 'SELECT player_slug, position from roster where first like "' + first + '%" and last like "' + last + '%";'
+		sqlStmt = 'SELECT player_slug from roster where first like "' + first + '%" and last like "' + last + '%";'
 		c.execute(sqlStmt)
 		result = c.fetchone()
 		if not result:
 			print first, last, "did not have a record."
 			continue
-		playerSlug, position = result
+		playerSlug  = result[0]
+		# Extract player position
+		position = player.find("td", attrs={"class": "rwo-pos align-c"}).text
 		# Extract player cost
 		cost = int(player.find("td", attrs={"class": "rwo-salary"})['data-salary'].replace(',', ''))
 		############################## FEATURES BELOW ##############################
@@ -69,10 +73,13 @@ def forToday():
 	 	queryPoint = train.createQueryPoint(dct, c)
 	 	# Use train.model to predict fantasy points using queryPoint
 	 	projectedPoints = train.model.predict(queryPoint)[0]
-	 	print playerSlug, projectedPoints, cost
+	 	# print dct.values(), projectedPoints, cost
 	 	# Add record for current player to the records to be inserted into the 
 	 	# today table
-	 	records += [[playerSlug, position, projectedPoints, cost]]
+	 	record = [playerSlug, position, projectedPoints, cost]
+	 	print record
+	 	records += [record]
 	sqlStmt = "INSERT OR REPLACE INTO today VALUES (?, ?, ?, ?)"
 	c.executemany(sqlStmt, records)
 	conn.commit()
+	conn.close()

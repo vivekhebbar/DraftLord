@@ -46,6 +46,7 @@ def formDataSet(date=datetime.now()):
 			dataPoint, dataLabel = createPointandLabel(record, conn)
 			data += [dataPoint]
 			labels += [dataLabel]
+	conn.close()
 
 # Helper function that extracts a datapoint and a label from a record in the 
 # gamelog table. Currently, the datapoint is of the form: 
@@ -59,13 +60,23 @@ def createPointandLabel(record, conn):
 	point, label, playerSlug = [], record[-1], record[1]
 	############################### FEATURES BELOW ###############################
 	# ADD: Average over past year
-	point += yearAverage(playerSlug, record[2], c)
+	year = yearAverage(playerSlug, record[2], c)
+	point += year
 	# ADD: Average over 5 most recent games for current date
-	point += rollAverage(playerSlug, record[2], c)
+	roll = rollAverage(playerSlug, record[2], c)
+	if roll[0] == None:
+		roll = year
+	point += roll
  	# ADD: Average over season vs. opponent
- 	point += oppAverage(playerSlug, record[3], c)
+ 	opp = oppAverage(playerSlug, record[3], c)
+ 	if opp[0] == None:
+ 		opp = year
+ 	point += opp
 	# ADD: Average over season when home/away
-	point += homeAwayAverage(playerSlug, record[4], c)
+	hoaw = homeAwayAverage(playerSlug, record[4], c)
+	if hoaw[0] == None:
+		hoaw = year
+	point += hoaw
 	return point, label
 
 # Description here
@@ -102,13 +113,23 @@ def createQueryPoint(dct, c):
 	point = []
 	############################### FEATURES BELOW ###############################
 	# ADD: Average over past year
-	point += yearAverage(dct['playerSlug'], dct['date'], c)
+	year = yearAverage(dct['playerSlug'], dct['date'], c)
+	point += year
 	# ADD: Average over 5 most recent games for current date
-	point += rollAverage(dct['playerSlug'], dct['date'], c)
+	roll = rollAverage(dct['playerSlug'], dct['date'], c)
+	if roll[0] == None:
+		roll = year
+	point += roll
  	# ADD: Average over season vs. opponent
- 	point += oppAverage(dct['playerSlug'], dct['opponentSlug'], c)
+ 	opp = oppAverage(dct['playerSlug'], dct['opponentSlug'], c)
+ 	if opp[0] == None:
+ 		opp = year
+ 	point += opp
 	# ADD: Average over season when home/away
-	point += homeAwayAverage(dct['playerSlug'], dct['homeAway'], c)
+	hoaw = homeAwayAverage(dct['playerSlug'], dct['homeAway'], c)
+	if hoaw[0] == None:
+		hoaw = year
+	point += hoaw
 	return point
 
 # Helper function for calculating average over year features
@@ -116,7 +137,14 @@ def yearAverage(playerSlug, intDate, c):
 	sqlStmt = "SELECT AVG(points), AVG(three_pointers_made), AVG(rebounds_total), AVG(assists), AVG(steals), AVG(blocks), AVG(turnovers), AVG(double_double), AVG(triple_double) FROM gamelog WHERE player_slug=\"" + playerSlug
  	sqlStmt += "\" AND date BETWEEN " + str(intDate - 10000) + " AND " + str(intDate)
  	c.execute(sqlStmt)
- 	return list(c.fetchone())
+ 	results = c.fetchone()
+ 	# If there are no results, re-run for non-player average
+ 	if results[0] == None:
+ 		sqlStmt = "SELECT AVG(points), AVG(three_pointers_made), AVG(rebounds_total), AVG(assists), AVG(steals), AVG(blocks), AVG(turnovers), AVG(double_double), AVG(triple_double) FROM gamelog WHERE"
+ 		sqlStmt += " date BETWEEN " + str(intDate - 10000) + " AND " + str(intDate)
+ 		c.execute(sqlStmt)
+ 		results = c.fetchone()
+ 	return list(results)
 
 # Helper function for calculating rolling average features
 def rollAverage(playerSlug, intDate, c):
