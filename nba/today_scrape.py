@@ -12,12 +12,12 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 def forToday():
 	print "Pulling all relevant data for today's games and players."
-	# We want to delete the today table in nba.db if it exists, and then re-
-	# instantiate it
+	# We want to delete all records in today table in nba.db if it exists;
+	# otherwise, re-instantiate it
 	conn = sqlite3.connect('nba.db')
 	c = conn.cursor()
-	c.execute('DROP TABLE IF EXISTS today;')
-	c.execute('CREATE TABLE today (player_slug TEXT, position TEXT, projected_fantasy_points REAL, cost INTEGER, PRIMARY KEY(player_slug));')
+	c.execute('CREATE TABLE IF NOT EXISTS today (player_slug TEXT, position TEXT, projected_fantasy_points REAL, cost INTEGER, PRIMARY KEY(player_slug));')
+	c.execute('DELETE FROM today;')
 	# Extract the list of games being played today. If there are no games today,
 	# exit. If there are, denote whether the participating teams are home or away
 	# in the teams dictionary.
@@ -45,7 +45,7 @@ def forToday():
 	for player in players:
 		# Extract player name
 		name = player.find("a", attrs={"class": "dplayer-link"}).text.split(" ")
-		first, last = name[0], name[1]
+		first, last = name[0].replace("'", '').replace('-',''), name[1].replace("'",'').replace('-','')
 		# Look up first, last in roster table; retrieve player slug and position
 		sqlStmt = 'SELECT player_slug from roster where first like "' + first + '%" and last like "' + last + '%";'
 		c.execute(sqlStmt)

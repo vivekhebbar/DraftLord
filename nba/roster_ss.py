@@ -31,7 +31,7 @@ def populateRoster():
 			if not pageOfPlayers:
 				break
 			for player in pageOfPlayers:
-				record = (player['first_name'], player['last_name'], team, player['position_abbreviation'], player['slug'], player['id'])
+				record = (player['first_name'].replace("'",'').replace('-',''), player['last_name'].replace("'",'').replace('-',''), team, player['position_abbreviation'], player['slug'], player['id'])
 				playerRecords += [record]
 		sqlStmt = "INSERT OR REPLACE INTO roster VALUES (?, ?, ?, ?, ?, ?)"
 		c.executemany(sqlStmt, playerRecords)

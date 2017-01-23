@@ -1,122 +1,149 @@
-import scraper
-import statsForMatchUp
+import sys
+import sqlite3
+import numpy as np
+names, positions, projectedPts, costs, numPlayers, best, bestScore = [], [], [], [], 0, [], 0
+
+def setupLineup():
+	global names, positions, projectedPts, costs, numPlayers
+	conn = sqlite3.connect('nba.db')
+	c = conn.cursor()
+	sqlStmt = "SELECT * FROM today ORDER BY projected_fantasy_points desc"
+	c.execute(sqlStmt)
+	records = np.array(c.fetchall())
+	conn.close()
+	numPlayers, _ = records.shape
+	names, positions, projectedPts, costs = records.T
+	projectedPts, costs = projectedPts.astype(float), costs.astype(int) / 100
+	print "Done formatting lineup generation data."
+
+memo = {}
+
+def memoize(a, b, c):
+	if (a, b, c) not in memo:
+		memo[(a, b, c)] = knapsack(a, b, c)
+	return memo[(a, b, c)]
+
+# def knapsack(a, b, c):
 
 
 
-positions = scraper.todaysList()
-#positions is a dictionary of {position -> array of player stats}
-# where each element in the array of player stats consists of a tuple of ('name', price, projected_score)
-# ex. results = {'point-guards': [('russell westbrook', 11100, 52), ('stephen curry', 10700, 47), ('kyle lowry', 8300, 37), 
-#               ('kyrie irving', 8400, 37), ('shaun livingston', 3200, 19), ('cory joseph', 3100, 16), 
-#               ('matthew dellavedova', 2400, 14)], 'forwards': [], 'small-forwards': [('kevin durant', 10300, 49), 
-#               ('lebron james', 10500, 48), ('harrison barnes', 4300, 20), ('andre iguodala', 4200, 20), ... }
-pg, sg, sf, pf, c = positions['point-guards'], positions['shooting-guards'], positions['small-forwards'], positions['power-forwards'], positions['centers']
-#assign the array of tuples of player info to appropriate name
 
-sorthelp = lambda x: x[2]
 
-#Create the broader categories by combining appropriate positions
-forwards = sorted(pf + sf, key=sorthelp)
-guards = sorted(pg + sg, key=sorthelp)
-utility = sorted(pg + sg + pf + sf + c, key=sorthelp)
 
-#Given the arrays of pg, sg, sf, etc. that were created above. this function will go through 8 for loops to try all legal combinations and return the best option
-#Can we improve this? Do we need to? Not sure...
 def findLineup():
-	best = []
-	bestscore = 0
+	global best, bestScore
+	if not numPlayers:
+		setupLineup()
+	pointGuards, shootGuards, smallForwards, powerForwards, centers = [],[],[],[], []
+	switchCase = {'PG': pointGuards, 'SG': shootGuards, 'SF': smallForwards, 'PF': powerForwards, 'C': centers}
+	for i in range(numPlayers):
+		switchCase[positions[i]].append(i)
+	guards, forwards = sorted(pointGuards + shootGuards), sorted(smallForwards + powerForwards)
+	utility = sorted(guards + forwards + centers)
 
-	for point_guard in pg:
-		print(point_guard)
-		cost = point_guard[1]
-		pp_est = point_guard[2]
-		lineup = [point_guard[0]]
+	best, bestScore, cost, points, lineup = best, 0, 0, 0, []
+	for pg in pointGuards:
+		updateProgress(pointGuards.index(pg), len(pointGuards))
+		cost += costs[pg]
+		points += projectedPts[pg]
+		lineup += [pg]
 
-		for shooting_guard in sg:
-			if cost + shooting_guard[1]> 50000:
+		for sg in shootGuards:
+			if cost + costs[sg] >= 50000:
 				continue
-			cost += shooting_guard[1]
-			pp_est += shooting_guard[2]
-			lineup += [shooting_guard[0]]
+			cost += costs[sg]
+			points += projectedPts[sg]
+			lineup += [sg]
 
-			for small_forward in sf:
-				if cost + small_forward[1]> 50000:
+			for sf in smallForwards:
+				if cost + costs[sf] >= 50000:
 					continue
-				cost += small_forward[1]
-				pp_est += small_forward[2]
-				lineup += [small_forward[0]]
+				cost += costs[sf]
+				points += projectedPts[sf]
+				lineup += [sf]
 
-				for power_forward in pf:
-					if cost + power_forward[1]> 50000:
+				for pf in powerForwards:
+					if cost + costs[pf] >= 50000:
 						continue
-					cost += power_forward[1]
-					pp_est += power_forward[2]
-					lineup += [power_forward[0]]
+					cost += costs[pf]
+					points += projectedPts[pf]
+					lineup += [pf]
 
-					for center in c:
-						if cost + center[1]> 50000:
+					for cr in centers:
+						if cost + costs[cr] >= 50000:
 							continue
-						cost += center[1]
-						pp_est += center[2]
-						lineup += [center[0]]
-						
-						for f in forwards:
-							if (cost + f[1] > 50000) or (f[0] in lineup):
-								continue
-							cost += f[1]
-							pp_est += f[2]
-							lineup += [f[0]]
+						cost += costs[cr]
+						points += projectedPts[cr]
+						lineup += [cr]
 
+						for f in forwards:
+							if f in lineup or cost + costs[f] >= 50000:
+								continue
+							cost += costs[f]
+							points += projectedPts[f]
+							lineup += [f]
 
 							for g in guards:
-								if (cost + g[1] > 50000) or (g[0] in lineup):
+								if g in lineup or cost + costs[g] >= 50000:
 									continue
-								cost += g[1]
-								pp_est += g[2]
-								lineup += [g[0]]
+								cost += costs[g]
+								points += projectedPts[g]
+								lineup += [g]
 
 								for u in utility:
-									if (cost + u[1] > 50000) or (u[0] in lineup):
+									if u in lineup or cost + costs[u] > 50000:
 										continue
-									cost += u[1]
-									pp_est += u[2]
-									lineup += [u[0]]
+									cost += costs[u]
+									points += projectedPts[u]
+									lineup += [u]
 
-									if bestscore < pp_est:
-										bestscore = pp_est
-										print(bestscore)
-										print(lineup)
-										best = list(lineup)
-#WHY DO WE HAVE ALL THIS POPPING AND SUBTRACTING? WOULDNT IT JUST BE EASIER
-#TO SAVE THE BEST SCORE AND THE BEST LINEUP AND THEN SET PP_EST AND LINEUP AND COST
-#BACK TO 0? AM I MISSING SOMETHING?
-									cost -= u[1]
-									pp_est -= u[2]
+									if points > bestScore:
+										bestScore = points
+										best = [names[index] for index in lineup]
+
+									cost -= costs[u]
+									points -= projectedPts[u]
 									lineup.pop()
 
-								cost -= g[1]
-								pp_est -= g[2]
+								cost -= costs[g]
+								points -= projectedPts[g]
 								lineup.pop()
 
-							cost -= f[1]
-							pp_est -= f[2]
+							cost -= costs[f]
+							points -= projectedPts[f]
 							lineup.pop()
 
-						cost -= center[1]
-						pp_est -= center[2]
+						cost -= costs[cr]
+						points -= projectedPts[cr]
 						lineup.pop()
 
-					cost -= power_forward[1]
-					pp_est -= power_forward[2]
+					cost -= costs[pf]
+					points -= projectedPts[pf]
 					lineup.pop()
 
-				cost -= small_forward[1]
-				pp_est -= small_forward[2]
+				cost -= costs[sf]
+				points -= projectedPts[sf]
 				lineup.pop()
 
-			cost -= shooting_guard[1]
-			pp_est -= shooting_guard[2]
+			cost -= costs[sg]
+			points -= projectedPts[sg]
 			lineup.pop()
 
-	print(bestscore)
+		print costs[pg]
+		cost -= costs[pg]
+		points -= projectedPts[pg]
+		lineup.pop()
+
+	print "Search completed. Best lineup:"
+	print best, bestScore
 	return best
+
+def updateProgress(idx, size):
+	progress = idx / float(size)
+	block = int(round(30 * progress))
+	text = "\rProgress: [{0}] {1}% Complete".format("#"*block + "-"*(30 - block), progress * 100)
+	sys.stdout.write(text)
+	sys.stdout.flush()
+
+s = setupLineup
+f = findLineup

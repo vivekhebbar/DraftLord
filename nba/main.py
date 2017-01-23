@@ -4,6 +4,7 @@ import roster_ss
 import train
 import today_scrape
 import sqlite3
+import lineup
 
 # For command line access to SQLite3 table
 def sqlInteract():
@@ -27,6 +28,9 @@ def today():
 	train.formDataSet()
 	train.generateModel()
 	today_scrape.forToday()
+	lineup.setupLineup()
+	line = lineup.findLineup()
+	return line
 
 # Currently implemented options for command line argument
 # usage
