@@ -10,6 +10,8 @@ import requests
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 
+
+""" Scrapes today's game schedule from website. Subsequently, data for all players eligible for play today and their respective DraftKings costs are also scraped. Using the scraped data for each player, a query point is generated and input to the model trained in train.py. The resulting output score is the projected fantasy points for the player. The today table in nba.db is populated with records for each player consisting of the player_slug, position, projected fantasy points, and DraftKings cost."""
 def forToday():
 	print "Pulling all relevant data for today's games and players."
 	# We want to delete all records in today table in nba.db if it exists;

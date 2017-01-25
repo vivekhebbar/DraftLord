@@ -3,8 +3,7 @@ import sqlite3
 import constants
 
 
-"""
-This function builds the roster table, which conatins record entries for all current
+""" This function builds the roster table, which conatins record entries for all current
 players in the form: 
 (first name, last name, team slug, position, player slug, player id)
 """

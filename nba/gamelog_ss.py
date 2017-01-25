@@ -6,9 +6,7 @@ import constants
 
 teamIds = None
 
-"""
-This function builds the gamelog table in nfl.db, which contains record entries for 
-all game performances during the past season in the form: 
+""" This function builds the gamelog table in nfl.db, which contains record entries for all game performances during the past season in the form: 
 (player id, slug, date, opponent, home/away, points, three pointers, rebounds, assists, 
 	steals, blocks, turnovers, double doubles, triple doubles, fantasy points)
 This function builds the gamelog table, which contains record entries
@@ -47,9 +45,7 @@ def populateGameLog():
 	# Upon looping through all teams, close DBconnection
 	conn.close()
 
-"""
-Updates the gamelog table to include all missing records from today until the latest
-day present in the gamelog table. 
+""" Updates the gamelog table to include all missing records from today until the latest day present in the gamelog table. 
 """
 def updateMissing():
 	print "Updating missing records in gamelog table..."
@@ -76,8 +72,7 @@ def updateMissing():
 	# Upon looping through all teams, close DBconnection
 	conn.close()
 
-"""
-Updatess the game log to include games that occured on the date parameter. 
+""" Updatess the game log to include games that occured on the date parameter. 
 Default parameter is the current date. This function assumes that the gamelog
 table already exists. 
 """
@@ -125,10 +120,10 @@ def updateGameLog(date=datetime.now(), conn=None):
 	c.executemany(sqlStmt, logRecords)
 	conn.commit()
 
-# Helper function that extracts desired stats from log record; will also calculate
-# the fantasy points the player was awarded from the game corresponding to the log
-# record. Currently, stats used are:
-# PTS, 3PT, RB, AST, STL, BLK, TO, 2-2, 3-2, (fantasy points)
+""" Helper function that extracts desired stats from log record; will also calculate
+the fantasy points the player was awarded from the game corresponding to the log
+record. Currently, stats used are:
+PTS, 3PT, RB, AST, STL, BLK, TO, 2-2, 3-2, (fantasy points)"""
 def extractPlayerStats(log):
 	xVector = np.array([
 		int(log['points']), 

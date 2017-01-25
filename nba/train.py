@@ -10,11 +10,11 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 # global variables
 data, labels, model = [], [], None
 
-# This function builds the a 2-dimensional training array, as well as a
-# 1-dimensional label array. Each inner array in the training array consists of
-# training points the user would like to create a predictive model for.
-# The label array consists of fantasy points scored by/on the player/date
-# combination that corresponds to its respective data point in the training array.
+""" This function builds the a 2-dimensional training array, as well as a
+1-dimensional label array. Each inner array in the training array consists of
+training points the user would like to create a predictive model for.
+The label array consists of fantasy points scored by/on the player/date
+combination that corresponds to its respective data point in the training array."""
 def formDataSet(date=datetime.now()):
 	print "Pulling data from gamelog table to create data, labels for training model..."
 	global data, labels
@@ -48,10 +48,10 @@ def formDataSet(date=datetime.now()):
 			labels += [dataLabel]
 	conn.close()
 
-# Helper function that extracts a datapoint and a label from a record in the 
-# gamelog table. Currently, the datapoint is of the form: 
-# ([points, 3pters, rebounds, assists, steals, blocks, turnovers] for [season
-# average, 5 most recent average, opp team average, home/away average]).
+""" Helper function that extracts a datapoint and a label from a record in the 
+gamelog table. Currently, the datapoint is of the form: 
+([points, 3pters, rebounds, assists, steals, blocks, turnovers] for [season
+average, 5 most recent average, opp team average, home/away average])."""
 def createPointandLabel(record, conn):
 	if not conn:
 		conn = sqlite3.connect('nba.db')
@@ -79,8 +79,8 @@ def createPointandLabel(record, conn):
 	point += hoaw
 	return point, label
 
-# Description here
-def generateModel():
+""" Partitions data and labels into training data and test data. Then trains a linear regression on the training data and prints out the accuracy of this regression on the test data. The coefficients of the linear regression are written to coefficients.csv."""
+def generateLinearRegressionModel():
 	global data, labels, model
 	lenData = (len(data) / 10) * 10
 	shfl = utils.shuffle(data, labels)
@@ -102,9 +102,8 @@ def generateModel():
 	score = model.score(testData, testLabel)
 	print "Accuracy of model on test data is: " + str(score)
 
-# Used to construct data point that is compatible with trained model by
-# the pertinent features from the gamelog data table
-# dct currently requires: intdate, opponent_slug, home/away
+""" Used to construct data point that is compatible with trained model by
+the pertinent features from the gamelog data table dct currently requires: intdate, opponent_slug, home/away"""
 def createQueryPoint(dct, c):
 	if not c:
 		conn = sqlite3.connect('nba.db')

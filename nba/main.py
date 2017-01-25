@@ -6,7 +6,7 @@ import today_scrape
 import sqlite3
 import lineup
 
-# For command line access to SQLite3 table
+""" For command line access to SQLite3 table. Use A sqlite3 db viewer instead."""
 def sqlInteract():
 	conn = sqlite3.connect('nba.db')
 	c = conn.cursor()
@@ -21,19 +21,22 @@ def sqlInteract():
 			print "Error!"
 			pass
 
-# Assuming that everything is in order, complete tasks required to generate lineup
-# for today.
+""" Complete tasks required to generate a lineup for today. This includes:
+	(1) update the missing game logs (assumes the gamelog table is populated up until the last x days)
+	(2) form the data set and train the projection model
+	(3) regenerate the today table to use in picking a lineup
+	(4) set up and pick the optimal lineup from the data provided in the today table"""
 def today():
 	gamelog_ss.updateMissing()
 	train.formDataSet()
-	train.generateModel()
+	train.generateLinearRegressionModel()
 	today_scrape.forToday()
 	lineup.setupLineup()
-	line = lineup.findLineup()
+	line = lineup.optimize()
 	return line
 
-# Currently implemented options for command line argument
-# usage
+""" Currently implemented options for command line argument
+usage"""
 actions = {'pr': roster_ss.populateRoster,
 		  'ugl': gamelog_ss.updateGameLog,
 		  'pgl': gamelog_ss.populateGameLog,
