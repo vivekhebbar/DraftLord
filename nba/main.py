@@ -30,7 +30,7 @@ def today():
 	gamelog_ss.updateMissing()
 	train.formDataSet()
 	train.generateLinearRegressionModel()
-	today_scrape.forToday()
+	today_csv.forToday()
 	lineup.setupLineup()
 	line = lineup.optimize()
 	return line

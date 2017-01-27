@@ -2,6 +2,7 @@ import numpy as np
 import sqlite3
 import heapq
 import sys
+import math
 
 names, positions, projectedPts, costs, numPlayers = [], [], [], [], 0
 
@@ -22,7 +23,7 @@ def setupLineup():
 def optimize():
 	lineups, init = [], findInitial()
 	lineupPts, lineupCost = sum([projectedPts[i] for i in init.values()]), sum([costs[i] for i in init.values()])
-	heapq.heappush(lineups, (.09 * lineupCost - lineupPts, init, lineupPts, lineupCost))
+	heapq.heappush(lineups, (.15 * lineupCost - lineupPts, init, lineupPts, lineupCost))
 	best, bestScore = None, 0
 	visited = set()
 	ctr = 0
@@ -45,7 +46,7 @@ def optimize():
 			for nb in neighbors:
 				if not str(sorted(nb.values())) in visited:
 					nbCost, nbPts = sum([costs[i] for i in nb.values()]), sum([projectedPts[i] for i in nb.values()])
-					heapq.heappush(lineups, (.09 * nbCost - nbPts, nb, nbPts, nbCost))
+					heapq.heappush(lineups, (.15 * math.exp(-ctr/1000000) * nbCost - nbPts, nb, nbPts, nbCost))
 
 	print best, sum([projectedPts[i] for i in best.values()]), [names[i] for i in best.values()], sum([costs[i] for i in best.values()]), [positions[i] for i in best.values()]
 	return best
